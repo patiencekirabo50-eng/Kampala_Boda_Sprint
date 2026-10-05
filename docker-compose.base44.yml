@@ -1,0 +1,47 @@
+services:
+  backend:
+    image: node:22-slim
+    working_dir: /app
+    volumes:
+      - ./server:/app
+      - server_deps:/app/node_modules
+    command: ["sh", "-ec", "npm install && exec npm run dev"]
+    environment:
+      - NODE_ENV=development
+      - PORT=8000
+    ports:
+      - "8000:8000"
+    restart: on-failure
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:8000/api/health').then(r=>r.ok?process.exit(0):process.exit(1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  frontend:
+    image: node:22-slim
+    working_dir: /app
+    volumes:
+      - ./client:/app
+      - frontend_deps:/app/node_modules
+    command: ["sh", "-ec", "npm install && exec npm run dev"]
+    environment:
+      - NODE_ENV=development
+      - __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS
+    ports:
+      - "3000:5173"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: on-failure
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:5173/').then(r=>r.ok?process.exit(0):process.exit(1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+volumes:
+  server_deps:
+  frontend_deps:
